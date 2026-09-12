@@ -1,7 +1,17 @@
-require('dotenv').config();
-const express = require('express'), { spawn } = require('node:child_process'), fs = require('node:fs'), path = require('node:path'), crypto = require('node:crypto'), Database = require('better-sqlite3');
+const path = require('node:path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
+const express = require('express'), { spawn } = require('node:child_process'), fs = require('node:fs'), crypto = require('node:crypto'), Database = require('better-sqlite3');
 const root = __dirname, inputRoot = path.resolve(process.env.INPUT_ROOT || root), out = path.resolve(process.env.OUTPUT_DIR || path.join(root, 'output')), logs = path.resolve(process.env.LOG_DIR || path.join(root, 'logs')), dbPath = path.resolve(process.env.DB_PATH || path.join(root, 'jobs.db')), script = path.resolve(process.env.UPSCALE_SCRIPT || path.join(root, 'upscale_iris_720p.ps1'));
 fs.mkdirSync(out, { recursive: true }); fs.mkdirSync(logs, { recursive: true });
+const requiredPaths = [
+  ['UPSCALE_SCRIPT', script],
+  ['FFMPEG_PATH', process.env.FFMPEG_PATH],
+  ['TVAI_MODEL_DIR', process.env.TVAI_MODEL_DIR],
+  ['INPUT_ROOT', inputRoot],
+];
+for (const [name, value] of requiredPaths) {
+  if (!value || !fs.existsSync(value)) throw new Error(`${name} does not exist: ${value || '<not set>'}`);
+}
 const db = new Database(dbPath); db.exec('CREATE TABLE IF NOT EXISTS jobs(id TEXT PRIMARY KEY,input TEXT,output TEXT,status TEXT,created_at TEXT,started_at TEXT,finished_at TEXT,duration_ms INTEGER,exit_code INTEGER,log_file TEXT)'); let busy = false;
 const { createLogger, captureOutput } = require('./logger');
 const logger = createLogger(logs, 'service.log', true);
